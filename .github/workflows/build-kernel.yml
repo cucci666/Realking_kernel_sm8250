@@ -1,0 +1,38 @@
+name: Kernel Build for Redmi K40S
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up build environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-aarch64-linux-gnu bison flex libssl-dev bc make curl zip
+        git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 -b master --depth=1 prebuilts_clang
+
+    - name: Compile kernel
+      run: |
+        export ARCH=arm64
+        export CROSS_COMPILE=aarch64-linux-gnu-
+        export CLANG_PATH=$(pwd)/prebuilts_clang/clang-r450784d/bin
+        export PATH=${CLANG_PATH}:${PATH}
+        make apollo_defconfig  # 使用适用于K40S的defconfig文件
+        make -j$(nproc) CC=clang CROSS_COMPILE=aarch64-linux-gnu-
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: kernel
+        path: arch/arm64/boot/Image.gz-dtb
